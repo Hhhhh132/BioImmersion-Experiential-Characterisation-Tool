@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Material archetype mapper</title>
+<style>
+  :root{
+    --paper:#F4F2EC;
+    --panel:#FFFFFF;
+    --ink:#1E1C18;
+    --ink-soft:#5B5750;
+    --line:#D8D3C7;
+    --line-strong:#B9B2A2;
+    --accent:#2F6E68;
+    --danger:#A6572D;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    line-height:1.5;
+    padding:32px 24px 64px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{margin-bottom:20px;}
+  h1{
+    font-size:26px;
+    font-weight:600;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14.5px;
+    max-width:660px;
+  }
+
+  .shared-note{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 12px;
+    margin-top:16px;
+    max-width:660px;
+  }
+  .shared-note .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;}
+
+  .banner{
+    font-size:13px;
+    padding:10px 13px;
+    border-radius:8px;
+    margin-bottom:16px;
+    max-width:660px;
+  }
+  .banner.error{background:#F4E4DA;color:var(--danger);border:1px solid #E0BBA2;}
+  .banner.info{background:#EAF1EF;color:var(--accent);border:1px solid #C7DAD6;}
+
+  .layout{
+    display:grid;
+    grid-template-columns:280px 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:860px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+  }
+  .panel + .panel{margin-top:18px;}
+
+  .panel h2{
+    font-size:12.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+  .panel h3{
+    font-size:14px;
+    font-weight:600;
+    margin:0 0 4px;
+  }
+
+  /* buttons / inputs shared */
+  input[type=text]{
+    padding:8px 10px;
+    border:1px solid var(--line-strong);
+    border-radius:7px;
+    font-size:14px;
+    font-family:inherit;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  button{font-family:inherit;}
+  .btn-primary{
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    padding:9px 16px;
+    border-radius:7px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-primary:hover{opacity:.88;}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-secondary{
+    border:1px solid var(--line-strong);
+    background:var(--panel);
+    color:var(--ink);
+    padding:7px 13px;
+    border-radius:7px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-secondary:hover{background:var(--paper);}
+  .link-btn{
+    border:none;background:none;color:var(--ink-soft);
+    font-size:13px;font-weight:600;cursor:pointer;padding:0;
+    display:flex;align-items:center;gap:5px;
+  }
+  .link-btn:hover{color:var(--ink);}
+
+  /* library */
+  .material-form{display:flex;gap:8px;margin-bottom:14px;}
+  .material-form input[type=text]{flex:1;}
+
+  .material-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+    gap:12px;
+  }
+  .material-card{
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:14px;
+    cursor:pointer;
+    background:var(--paper);
+    position:relative;
+  }
+  .material-card:hover{border-color:var(--line-strong);}
+  .material-card .swatch{width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:7px;}
+  .material-card .name{font-weight:600;font-size:14.5px;}
+  .material-card .meta{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+  .material-card .rm{
+    position:absolute;top:8px;right:8px;
+    background:none;border:none;color:var(--ink-soft);cursor:pointer;
+    font-size:15px;line-height:1;padding:2px 4px;visibility:hidden;
+  }
+  .material-card:hover .rm{visibility:visible;}
+  .material-card .rm:hover{color:var(--danger);}
+
+  .empty-note{font-size:13px;color:var(--ink-soft);padding:6px 2px;}
+  .loading-note{font-size:13px;color:var(--ink-soft);padding:6px 2px;}
+
+  /* palette, grouped by archetype type */
+  .palette{display:flex;flex-direction:column;gap:12px;}
+  .palette-group-label{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .palette-group-label .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .palette-group-chips{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 11px;
+    border:1px solid var(--line-strong);
+    border-radius:20px;
+    background:var(--paper);
+    font-size:13px;
+    cursor:grab;
+    user-select:none;
+    touch-action:none;
+    white-space:nowrap;
+  }
+  .chip:active{cursor:grabbing;}
+  .chip.dim{opacity:.4;}
+  .chip-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+
+  .hint{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
+
+  /* field of work */
+  .fow-row{margin-bottom:16px;}
+  .fow-row label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .fow-row input[type=text]{width:100%;max-width:340px;}
+  .fow-row .hint{margin-top:6px;}
+
+  /* grid area */
+  .grid-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 20px 16px;
+  }
+  .axis-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:6px;
+  }
+  .axis-input{
+    border:none;
+    background:none;
+    font-size:12.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    font-family:inherit;
+    padding:2px 4px;
+    border-radius:5px;
+    width:150px;
+  }
+  .axis-input:hover, .axis-input:focus{background:var(--paper);color:var(--ink);outline:none;}
+  .axis-row.top .axis-input{text-align:center;width:100%;}
+
+  .grid-outer{
+    display:flex;
+    align-items:stretch;
+    gap:6px;
+  }
+  .axis-input.left-label{
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+    width:auto;
+    text-align:center;
+    padding:4px 2px;
+  }
+  .axis-input.right-label{
+    writing-mode:vertical-rl;
+    width:auto;
+    text-align:center;
+    padding:4px 2px;
+  }
+
+  .canvas{
+    position:relative;
+    flex:1;
+    aspect-ratio:1/1;
+    max-height:560px;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:12.5% 12.5%;
+    background-color:var(--paper);
+    border:1px solid var(--line-strong);
+    border-radius:6px;
+    touch-action:none;
+    overflow:visible;
+  }
+  .crosshair-v, .crosshair-h{
+    position:absolute;
+    background:var(--ink-soft);
+    opacity:.55;
+  }
+  .crosshair-v{left:50%;top:0;bottom:0;width:1px;transform:translateX(-0.5px);}
+  .crosshair-h{top:50%;left:0;right:0;height:1px;transform:translateY(-0.5px);}
+
+  .drop-hover{outline:2px dashed var(--accent);outline-offset:-2px;}
+
+  .marker{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    cursor:grab;
+    touch-action:none;
+    z-index:3;
+  }
+  .marker:active{cursor:grabbing;}
+  .marker .dot{
+    width:13px;height:13px;border-radius:50%;
+    border:2px solid var(--panel);
+    box-shadow:0 0 0 3px var(--accent);
+  }
+  .marker .lbl{
+    font-size:11px;
+    background:var(--panel);
+    border:1px solid var(--line-strong);
+    border-radius:5px;
+    padding:1px 6px;
+    white-space:nowrap;
+    pointer-events:none;
+  }
+
+  .agg-dot{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    width:8px;height:8px;
+    border-radius:50%;
+    opacity:.5;
+    border:1px solid rgba(255,255,255,.6);
+    z-index:1;
+  }
+
+  .bottom-labels{
+    display:flex;
+    justify-content:space-between;
+    margin-top:6px;
+    padding:0 2px;
+  }
+
+  .drag-ghost{
+    position:fixed;
+    z-index:999;
+    pointer-events:none;
+    padding:7px 11px;
+    border-radius:20px;
+    background:var(--ink);
+    color:var(--paper);
+    font-size:13px;
+    transform:translate(-50%,-50%);
+    white-space:nowrap;
+  }
+
+  /* draft list */
+  .draft-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .draft-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 8px;
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:var(--paper);
+  }
+  .draft-row .mini-swatch{width:9px;height:9px;border-radius:50%;flex:none;}
+  .draft-row .aname{font-size:13px;font-weight:600;min-width:160px;}
+  .draft-row .coords{font-size:11.5px;color:var(--ink-soft);white-space:nowrap;}
+  .draft-row .reason-input{flex:1;}
+  .draft-row .rm{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:13px;}
+  .draft-row .rm:hover{color:var(--danger);}
+
+  .submit-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
+  .submit-msg{font-size:12.5px;color:var(--danger);}
+  .submit-msg.ok{color:var(--accent);}
+
+  /* log */
+  .log-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .log-header h2{margin:0;}
+  .log-controls{display:flex;align-items:center;gap:8px;}
+  select{
+    border:1px solid var(--line-strong);
+    border-radius:7px;
+    padding:6px 9px;
+    font-size:13px;
+    font-family:inherit;
+    background:var(--panel);
+    color:var(--ink);
+  }
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{
+    text-align:left;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    font-weight:600;
+    border-bottom:1px solid var(--line-strong);
+    padding:0 8px 8px;
+  }
+  tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  .mini-swatch{
+    display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;
+    vertical-align:middle;
+  }
+  .del-btn{
+    background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:13px;
+  }
+  .del-btn:hover{color:var(--danger);}
+
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+  /* Touch/coarse pointers have no hover state, so keep delete affordances visible */
+  @media (hover:none), (pointer:coarse){
+    .material-card .rm{visibility:visible;}
+  }
+
+  /* ---------- phone-screen optimisation ---------- */
+  @media (max-width:640px){
+    body{padding:16px 12px 48px;}
+    h1{font-size:20px;}
+    header p{font-size:13px;}
+    .shared-note{font-size:12px;padding:8px 10px;}
+    .banner{font-size:12.5px;}
+
+    .panel{padding:14px;}
+    .panel + .panel{margin-top:14px;}
+    .panel h2{font-size:11.5px;}
+
+    /* prevent iOS auto-zoom on focus by keeping inputs/selects >=16px */
+    input[type=text], select{font-size:16px;}
+
+    .material-form{flex-direction:column;gap:8px;}
+    .material-form input[type=text]{width:100%;}
+    .material-form .btn-primary{width:100%;padding:11px 16px;}
+
+    .material-grid{grid-template-columns:1fr 1fr;gap:8px;}
+    .material-card{padding:12px;}
+    .material-card .rm{top:4px;right:4px;font-size:18px;padding:6px 8px;}
+    .material-card .name{font-size:13.5px;}
+    .material-card .meta{font-size:11px;}
+
+    .log-header{flex-direction:column;align-items:stretch;gap:8px;}
+    .log-controls{flex-wrap:wrap;gap:8px;}
+    .log-controls select{flex:1;min-width:0;}
+    .log-controls .btn-secondary{flex:1;}
+
+    table{min-width:620px;}
+
+    .grid-card{padding:14px 10px 10px;}
+    .axis-row.top .axis-input{font-size:11px;}
+    .canvas{max-height:min(78vw, 420px);}
+
+    .fow-row input[type=text]{max-width:100%;}
+
+    .palette-group-chips{gap:6px;}
+    .chip{padding:8px 12px;font-size:13px;}
+
+    .draft-row{flex-wrap:wrap;row-gap:6px;}
+    .draft-row .aname{min-width:0;flex:1 1 auto;}
+    .draft-row .coords{order:3;}
+    .draft-row .reason-input{flex:1 1 100%;order:4;}
+    .draft-row .rm{padding:4px 6px;font-size:16px;}
+
+    .submit-row{flex-wrap:wrap;gap:8px;}
+    .submit-row .btn-primary{width:100%;padding:11px 16px;}
+
+    .link-btn{padding:6px 0;}
+  }
+  @media (max-width:400px){
+    .material-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Material archetype mapper</h1>
+    <p id="tagline">A shared library of materials. Click into one to add your own read on where its familiar object-forms sit against two axes — everyone who contributes notes their field of work, and nothing else.</p>
+    <div class="shared-note"><span class="dot"></span>This library and every response are stored and visible to anyone who opens this tool.</div>
+  </header>
+  <div id="app"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+  // ================= SUPABASE CONFIG =================
+  // Fill these in with your own project's values (Supabase dashboard →
+  // Project Settings → API). See the setup guide for the table/policy SQL
+  // this app expects.
+  const SUPABASE_URL = 'https://bdfhqybqluuxxpctfevw.supabase.co/rest/v1/';
+  const SUPABASE_ANON_KEY = 'sb_publishable_lFwv495s6g185cIFG5s7MQ_reVZTT3R';
+  const TABLE = 'app_data';
+
+  const CONFIGURED = /^https:\/\/.+\.supabase\.co$/.test(SUPABASE_URL) &&
+    !!SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('YOUR-ANON');
+  const sb = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  // =====================================================
+
+  // Archetype types, each with a distinctive colour and a set of concrete
+  // example objects that belong to that type. Shared across every material.
+  const TYPES = [
+    { name:"Sheet", color:"#2F6E68", examples:["Plywood board","Pane of glass","Corrugated cardboard"] },
+    { name:"Film", color:"#A6572D", examples:["Cling film","Vinyl decal","Camera film"] },
+    { name:"Foam", color:"#3B5A73", examples:["Memory foam mattress","Packing foam block","Foam ear plug"] },
+    { name:"Panel", color:"#C08A2A", examples:["Solar panel","Wall cladding panel","Printed circuit board"] },
+    { name:"Shell", color:"#6B4A6B", examples:["Phone case","Tortoise shell","Car body panel"] },
+    { name:"Core", color:"#5B7553", examples:["Honeycomb core","Apple core","Reactor fuel core"] },
+    { name:"Textile", color:"#8A4B4B", examples:["Woven cotton shirt","Knitted wool scarf","Pair of denim jeans"] },
+    { name:"Membrane", color:"#4A5A8A", examples:["Cell membrane","Waterproof jacket membrane","Drum skin"] },
+    { name:"Scaffold", color:"#9C6B2E", examples:["Bone graft scaffold","Building scaffolding","3D-printed lattice"] },
+    { name:"Moulded object", color:"#4F7D8C", examples:["Injection-moulded bottle cap","Cast garden ornament","Ceramic mug"] },
+    { name:"Composite", color:"#7A6A3F", examples:["Carbon-fibre bike frame","Fibreglass boat hull","Plywood laminate"] },
+    { name:"Functional material", color:"#6F4E9C", examples:["Piezoelectric sensor","Shape-memory alloy wire","Photochromic lens"] }
+  ];
+  const COLORS = ["#2F6E68","#A6572D","#3B5A73","#C08A2A","#6B4A6B","#5B7553","#8A4B4B","#4A5A8A"];
+  const DEFAULT_AXES = { top:"Interesting", bottom:"Boring", left:"Impractical", right:"Practical" };
+
+  const app = document.getElementById('app');
+
+  const state = {
+    view: 'library',              // 'library' | 'material'
+    loading: true,
+    error: null,
+    materials: [],                 // {id,name,color,createdAt,responseCount}
+    librarySort: 'date-desc',      // 'date-desc' | 'date-asc' | 'alpha'
+    axisLabels: { ...DEFAULT_AXES },
+    activeMaterialId: null,
+    activeResponses: [],           // loaded responses for the open material
+    fieldOfWork: '',
+    draftPlacements: [],           // {id,archetype,typeName,color,x,y,reason}
+    filterFow: 'all',
+    submitMsg: null,
+    submitOk: false,
+  };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function fmt(n){ return (Math.round(n*10)/10).toFixed(1); }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function timeAgo(ts){
+    const s = Math.max(1, Math.round((Date.now()-ts)/1000));
+    if(s<60) return s+'s ago';
+    const m = Math.round(s/60); if(m<60) return m+'m ago';
+    const h = Math.round(m/60); if(h<24) return h+'h ago';
+    const d = Math.round(h/24); if(d<30) return d+'d ago';
+    return new Date(ts).toLocaleDateString();
+  }
+
+  // ---------- storage helpers (Supabase-backed) ----------
+  async function getJSON(key, fallback){
+    if(!sb) return fallback;
+    try{
+      const { data, error } = await sb.from(TABLE).select('value').eq('key', key).maybeSingle();
+      if(error) throw error;
+      if(!data) return fallback;
+      return data.value;
+    }catch(e){
+      console.error(e);
+      return fallback;
+    }
+  }
+  async function setJSON(key, value){
+    if(!sb){
+      state.error = "Supabase isn't configured yet — see the setup instructions in the file. Changes won't be saved.";
+      return false;
+    }
+    try{
+      const { error } = await sb.from(TABLE).upsert({ key, value, updated_at: new Date().toISOString() });
+      if(error) throw error;
+      return true;
+    }catch(e){
+      console.error(e);
+      state.error = "Couldn't save — your last change may not have persisted. Try again.";
+      return false;
+    }
+  }
+  async function deleteKey(key){
+    if(!sb) return;
+    try{
+      const { error } = await sb.from(TABLE).delete().eq('key', key);
+      if(error) throw error;
+    }catch(e){ /* ignore missing key */ }
+  }
+
+  // ---------- data loads ----------
+  async function loadLibrary(){
+    state.loading = true; state.error = null; render();
+    if(!CONFIGURED){
+      state.loading = false;
+      state.error = "Supabase isn't connected yet. Open this file and set SUPABASE_URL and SUPABASE_ANON_KEY near the top of the <script> tag — see the setup guide for the SQL to run first.";
+      render();
+      return;
+    }
+    const [materials, axisLabels] = await Promise.all([
+      getJSON('materials', []),
+      getJSON('axisLabels', { ...DEFAULT_AXES })
+    ]);
+    state.materials = materials;
+    state.axisLabels = axisLabels;
+    state.loading = false;
+    render();
+  }
+
+  async function loadMaterialResponses(id){
+    state.loading = true; state.error = null; render();
+    const responses = await getJSON('responses:'+id, []);
+    state.activeResponses = responses;
+    state.loading = false;
+    render();
+  }
+
+  // ---------- actions: library ----------
+  async function addMaterial(name){
+    name = name.trim();
+    if(!name) return;
+    const color = COLORS[state.materials.length % COLORS.length];
+    const m = { id: uid(), name, color, createdAt: Date.now(), responseCount: 0 };
+    const next = [...state.materials, m];
+    state.materials = next;
+    render();
+    await setJSON('materials', next);
+  }
+
+  async function removeMaterial(id){
+    const m = state.materials.find(x=>x.id===id);
+    if(!m) return;
+    if(!confirm(`Remove "${m.name}" and all ${m.responseCount||0} response(s) logged against it? This affects the shared library for everyone.`)) return;
+    state.materials = state.materials.filter(x=>x.id!==id);
+    render();
+    await setJSON('materials', state.materials);
+    await deleteKey('responses:'+id);
+  }
+
+  async function saveAxisLabels(){
+    await setJSON('axisLabels', state.axisLabels);
+  }
+
+  // ---------- actions: material / responses ----------
+  function openMaterial(id){
+    state.view = 'material';
+    state.activeMaterialId = id;
+    state.activeResponses = [];
+    state.fieldOfWork = '';
+    state.draftPlacements = [];
+    state.filterFow = 'all';
+    state.submitMsg = null;
+    loadMaterialResponses(id);
+  }
+
+  function backToLibrary(){
+    state.view = 'library';
+    state.activeMaterialId = null;
+    state.activeResponses = [];
+    state.draftPlacements = [];
+    state.submitMsg = null;
+    render();
+  }
+
+  async function submitResponse(){
+    const fow = state.fieldOfWork.trim();
+    if(!fow){
+      state.submitMsg = 'Add your field of work before submitting.';
+      state.submitOk = false;
+      flashFieldOfWork();
+      render();
+      return;
+    }
+    if(state.draftPlacements.length === 0){
+      state.submitMsg = 'Drag at least one object example onto the grid first.';
+      state.submitOk = false;
+      render();
+      return;
+    }
+    const response = {
+      id: uid(),
+      fieldOfWork: fow,
+      createdAt: Date.now(),
+      placements: state.draftPlacements.map(p=>({
+        archetype:p.archetype, typeName:p.typeName, color:p.color, x:p.x, y:p.y, reason:p.reason||''
+      }))
+    };
+    const nextResponses = [...state.activeResponses, response];
+    state.activeResponses = nextResponses;
+    state.draftPlacements = [];
+    state.fieldOfWork = '';
+    state.submitMsg = 'Response saved — thank you.';
+    state.submitOk = true;
+    render();
+
+    await setJSON('responses:'+state.activeMaterialId, nextResponses);
+    const mat = state.materials.find(m=>m.id===state.activeMaterialId);
+    if(mat){
+      mat.responseCount = nextResponses.length;
+      await setJSON('materials', state.materials);
+    }
+  }
+
+  function flashFieldOfWork(){
+    const input = document.getElementById('fowInput');
+    if(!input) return;
+    input.focus();
+    input.style.outline = '2px solid #A6572D';
+    setTimeout(()=>{ input.style.outline = ''; }, 700);
+  }
+
+  // ---------- render root ----------
+  function render(){
+    if(state.view === 'library') renderLibraryView();
+    else renderMaterialView();
+  }
+
+  function getSortedMaterials(){
+    const arr = [...state.materials];
+    if(state.librarySort === 'alpha'){
+      arr.sort((a,b)=>a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
+    } else if(state.librarySort === 'date-asc'){
+      arr.sort((a,b)=>a.createdAt-b.createdAt);
+    } else {
+      arr.sort((a,b)=>b.createdAt-a.createdAt);
+    }
+    return arr;
+  }
+
+  // ================= LIBRARY VIEW =================
+  function renderLibraryView(){
+    document.getElementById('tagline').textContent =
+      "A shared library of materials. Click into one to add your own read on where its familiar object-forms sit against two axes — everyone who contributes notes their field of work, and nothing else.";
+
+    const totalResponses = state.materials.reduce((a,m)=>a+(m.responseCount||0),0);
+
+    let cardsHtml = '';
+    if(state.loading){
+      cardsHtml = `<div class="loading-note">Loading library…</div>`;
+    } else if(state.materials.length === 0){
+      cardsHtml = `<div class="empty-note">No materials yet — add one above to start collecting responses.</div>`;
+    } else {
+      cardsHtml = `<div class="material-grid">` + getSortedMaterials().map(m=>`
+        <div class="material-card" data-id="${m.id}">
+          <button class="rm" data-id="${m.id}" title="Remove material">&times;</button>
+          <div><span class="swatch" style="background:${m.color}"></span><span class="name">${escapeHtml(m.name)}</span></div>
+          <div class="meta">${m.responseCount||0} response${(m.responseCount||0)===1?'':'s'} · added ${timeAgo(m.createdAt)}</div>
+        </div>
+      `).join('') + `</div>`;
+    }
+
+    app.innerHTML = `
+      ${state.error ? `<div class="banner error">${escapeHtml(state.error)}</div>` : ''}
+      <div class="panel">
+        <div class="log-header">
+          <h2>Materials library</h2>
+          ${state.materials.length > 1 ? `
+          <div class="log-controls">
+            <label for="sortSelect" style="font-size:12px;color:var(--ink-soft);">Sort</label>
+            <select id="sortSelect">
+              <option value="date-desc" ${state.librarySort==='date-desc'?'selected':''}>Newest added</option>
+              <option value="date-asc" ${state.librarySort==='date-asc'?'selected':''}>Oldest added</option>
+              <option value="alpha" ${state.librarySort==='alpha'?'selected':''}>Name (A–Z)</option>
+            </select>
+          </div>` : ''}
+        </div>
+        <div class="material-form">
+          <input type="text" id="materialInput" placeholder="e.g. Recycled PET fibre" maxlength="60">
+          <button class="btn-primary" id="addMaterialBtn">Add material</button>
+        </div>
+        ${cardsHtml}
+        ${state.materials.length ? `<div class="hint">${totalResponses} response${totalResponses===1?'':'s'} logged across ${state.materials.length} material${state.materials.length===1?'':'s'}.</div>` : ''}
+      </div>
+    `;
+
+    document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
+      const input = document.getElementById('materialInput');
+      addMaterial(input.value);
+      input.value = '';
+    });
+    document.getElementById('materialInput').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        addMaterial(e.target.value);
+        e.target.value = '';
+      }
+    });
+    app.querySelectorAll('.material-card').forEach(card=>{
+      card.addEventListener('click', (e)=>{
+        if(e.target.closest('.rm')) return;
+        openMaterial(card.dataset.id);
+      });
+    });
+    app.querySelectorAll('.rm').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        removeMaterial(btn.dataset.id);
+      });
+    });
+    const sortSelect = document.getElementById('sortSelect');
+    if(sortSelect){
+      sortSelect.addEventListener('change', (e)=>{
+        state.librarySort = e.target.value;
+        renderLibraryView();
+      });
+    }
+  }
+
+  // ================= MATERIAL VIEW =================
+  let canvasEl = null;
+
+  function renderMaterialView(){
+    const mat = state.materials.find(m=>m.id===state.activeMaterialId);
+    if(!mat){ backToLibrary(); return; }
+
+    document.getElementById('tagline').textContent =
+      `Adding a response to "${mat.name}". Note your field of work, then drag example objects onto the grid to score where they sit for this material.`;
+
+    const uniqueFow = Array.from(new Set(state.activeResponses.map(r=>r.fieldOfWork))).sort();
+    const filterOptionsHtml = `<option value="all">All fields of work</option>` +
+      uniqueFow.map(f=>`<option value="${escapeHtml(f)}" ${state.filterFow===f?'selected':''}>${escapeHtml(f)}</option>`).join('');
+
+    const paletteHtml = TYPES.map(type=>`
+      <div class="palette-group">
+        <div class="palette-group-label"><span class="dot" style="background:${type.color}"></span>${escapeHtml(type.name)}</div>
+        <div class="palette-group-chips">
+          ${type.examples.map(ex=>`
+            <div class="chip" data-archetype="${escapeHtml(ex)}" data-type="${escapeHtml(type.name)}" data-color="${type.color}">
+              <span class="chip-dot" style="background:${type.color}"></span>${escapeHtml(ex)}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    const draftListHtml = state.draftPlacements.length ? `
+      <ul class="draft-list" id="draftList">
+        ${state.draftPlacements.map(p=>`
+          <li class="draft-row" data-id="${p.id}">
+            <span class="mini-swatch" style="background:${p.color}"></span>
+            <span class="aname">${escapeHtml(p.archetype)}</span>
+            <span class="coords">${fmt(p.x)}, ${fmt(p.y)}</span>
+            <input type="text" class="reason-input" data-id="${p.id}" placeholder="Why here? (optional)" value="${escapeHtml(p.reason||'')}">
+            <button class="rm" data-id="${p.id}" title="Remove">&times;</button>
+          </li>
+        `).join('')}
+      </ul>
+    ` : `<div class="hint" id="draftEmptyHint">Drag an example from the palette onto the grid below to start your response.</div>`;
+
+    const filteredResponses = state.filterFow === 'all'
+      ? state.activeResponses
+      : state.activeResponses.filter(r=>r.fieldOfWork===state.filterFow);
+
+    let logRowsHtml = '';
+    const flatRows = [];
+    filteredResponses.forEach(r=>{
+      r.placements.forEach(p=>flatRows.push({r,p}));
+    });
+    flatRows.sort((a,b)=>b.r.createdAt-a.r.createdAt);
+    if(flatRows.length === 0){
+      logRowsHtml = `<tr><td colspan="6"><div class="empty-note">No responses logged yet — be the first.</div></td></tr>`;
+    } else {
+      logRowsHtml = flatRows.map(({r,p})=>`
+        <tr>
+          <td>${escapeHtml(r.fieldOfWork)}</td>
+          <td><span class="mini-swatch" style="background:${p.color}"></span>${escapeHtml(p.archetype)}</td>
+          <td style="text-align:right;">${fmt(p.x)}</td>
+          <td style="text-align:right;">${fmt(p.y)}</td>
+          <td>${escapeHtml(p.reason||'')}</td>
+          <td style="text-align:right;color:var(--ink-soft);font-size:12px;">${timeAgo(r.createdAt)}</td>
+        </tr>
+      `).join('');
+    }
+
+    app.innerHTML = `
+      ${state.error ? `<div class="banner error">${escapeHtml(state.error)}</div>` : ''}
+      <button class="link-btn" id="backBtn" style="margin-bottom:14px;">&larr; Back to library</button>
+
+      <div class="layout">
+        <div>
+          <div class="panel">
+            <h2>Material</h2>
+            <h3><span class="swatch" style="background:${mat.color};width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:7px;"></span>${escapeHtml(mat.name)}</h3>
+            <div class="hint">${(mat.responseCount||0)} response${(mat.responseCount||0)===1?'':'s'} logged so far.</div>
+          </div>
+          <div class="panel">
+            <h2>Archetypes</h2>
+            <div class="palette" id="palette">${paletteHtml}</div>
+            <div class="hint">Each group's colour marks its markers. Field-of-work is captured once per response and applies to every placement in it.</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <h2>Add your response</h2>
+            <div class="fow-row">
+              <label for="fowInput">What's your field of work?</label>
+              <input type="text" id="fowInput" placeholder="e.g. Product design, Materials science, Fashion, Architecture" value="${escapeHtml(state.fieldOfWork)}" maxlength="80">
+              <div class="hint">This is the only detail recorded about you.</div>
+            </div>
+
+            <div class="grid-card">
+              <div class="axis-row top">
+                <input class="axis-input" id="labelTop" value="${escapeHtml(state.axisLabels.top)}">
+              </div>
+              <div class="grid-outer">
+                <input class="axis-input left-label" id="labelLeft" value="${escapeHtml(state.axisLabels.left)}">
+                <div class="canvas" id="canvas">
+                  <div class="crosshair-v"></div>
+                  <div class="crosshair-h"></div>
+                </div>
+                <input class="axis-input right-label" id="labelRight" value="${escapeHtml(state.axisLabels.right)}">
+              </div>
+              <div class="bottom-labels">
+                <span></span>
+                <input class="axis-input" id="labelBottom" value="${escapeHtml(state.axisLabels.bottom)}" style="text-align:center;width:100%;">
+                <span></span>
+              </div>
+            </div>
+
+            ${draftListHtml}
+
+            <div class="submit-row">
+              <button class="btn-primary" id="submitBtn">Submit response</button>
+              ${state.submitMsg ? `<span class="submit-msg ${state.submitOk?'ok':''}">${escapeHtml(state.submitMsg)}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="log-header">
+              <h2>All responses</h2>
+              <div class="log-controls">
+                <select id="filterFow">${filterOptionsHtml}</select>
+                <button class="btn-secondary" id="exportBtn">Export CSV</button>
+              </div>
+            </div>
+            ${state.loading ? `<div class="loading-note">Loading responses…</div>` : `
+            <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Field of work</th>
+                  <th>Archetype</th>
+                  <th style="text-align:right;">${escapeHtml(state.axisLabels.right)}/${escapeHtml(state.axisLabels.left)}</th>
+                  <th style="text-align:right;">${escapeHtml(state.axisLabels.top)}/${escapeHtml(state.axisLabels.bottom)}</th>
+                  <th>Why here?</th>
+                  <th style="text-align:right;">When</th>
+                </tr>
+              </thead>
+              <tbody id="logBody">${logRowsHtml}</tbody>
+            </table>
+            </div>`}
+          </div>
+        </div>
+      </div>
+    `;
+
+    canvasEl = document.getElementById('canvas');
+    renderAggDots();
+    renderDraftMarkers();
+    attachMaterialViewHandlers();
+  }
+
+  function renderAggDots(){
+    if(!canvasEl) return;
+    canvasEl.querySelectorAll('.agg-dot').forEach(el=>el.remove());
+    const responses = state.filterFow === 'all'
+      ? state.activeResponses
+      : state.activeResponses.filter(r=>r.fieldOfWork===state.filterFow);
+    responses.forEach(r=>{
+      r.placements.forEach(p=>{
+        const el = document.createElement('div');
+        el.className = 'agg-dot';
+        el.style.left = (50 + p.x) + '%';
+        el.style.top = (50 - p.y) + '%';
+        el.style.background = p.color;
+        el.title = `${p.archetype} — ${r.fieldOfWork}${p.reason ? ' — "'+p.reason+'"' : ''}`;
+        canvasEl.appendChild(el);
+      });
+    });
+  }
+
+  function renderDraftMarkers(){
+    if(!canvasEl) return;
+    canvasEl.querySelectorAll('.marker').forEach(el=>el.remove());
+    state.draftPlacements.forEach(p=>{
+      const el = document.createElement('div');
+      el.className = 'marker';
+      el.dataset.id = p.id;
+      el.style.left = (50 + p.x) + '%';
+      el.style.top = (50 - p.y) + '%';
+      el.innerHTML = `<div class="dot" style="background:${p.color};"></div><div class="lbl">${escapeHtml(p.archetype)}</div>`;
+      el.addEventListener('pointerdown', (e)=>onMarkerPointerDown(e, p.id));
+      canvasEl.appendChild(el);
+    });
+  }
+
+  function attachMaterialViewHandlers(){
+    document.getElementById('backBtn').addEventListener('click', backToLibrary);
+
+    document.getElementById('fowInput').addEventListener('input', (e)=>{
+      state.fieldOfWork = e.target.value;
+    });
+
+    ['labelTop','labelBottom','labelLeft','labelRight'].forEach(id=>{
+      const key = id.replace('label','').toLowerCase();
+      document.getElementById(id).addEventListener('change', (e)=>{
+        state.axisLabels[key] = e.target.value || DEFAULT_AXES[key];
+        saveAxisLabels();
+      });
+    });
+
+    document.querySelectorAll('#palette .chip').forEach(chip=>{
+      chip.addEventListener('pointerdown', onChipPointerDown);
+    });
+
+    document.querySelectorAll('.draft-row .reason-input').forEach(inp=>{
+      inp.addEventListener('input', (e)=>{
+        const p = state.draftPlacements.find(x=>x.id===e.target.dataset.id);
+        if(p) p.reason = e.target.value;
+      });
+    });
+    document.querySelectorAll('.draft-row .rm').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.draftPlacements = state.draftPlacements.filter(x=>x.id!==btn.dataset.id);
+        renderMaterialView();
+      });
+    });
+
+    document.getElementById('submitBtn').addEventListener('click', submitResponse);
+
+    document.getElementById('filterFow').addEventListener('change', (e)=>{
+      state.filterFow = e.target.value;
+      renderMaterialView();
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', exportCsv);
+  }
+
+  // ---- drag from palette / reposition draft marker ----
+  let dragGhost = null;
+  let draggingArchetype = null;
+  let draggingTypeName = null;
+  let draggingColor = null;
+  let draggingExistingId = null;
+
+  function onChipPointerDown(e){
+    if(!state.fieldOfWork.trim()){
+      flashFieldOfWork();
+      return;
+    }
+    e.preventDefault();
+    const chip = e.currentTarget;
+    draggingArchetype = chip.dataset.archetype;
+    draggingTypeName = chip.dataset.type;
+    draggingColor = chip.dataset.color;
+    draggingExistingId = null;
+    startGhost(chip.dataset.archetype, chip.dataset.color, e.clientX, e.clientY);
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', onDragEnd);
+  }
+
+  function onMarkerPointerDown(e, placementId){
+    e.preventDefault();
+    e.stopPropagation();
+    const p = state.draftPlacements.find(x=>x.id===placementId);
+    if(!p) return;
+    draggingArchetype = p.archetype;
+    draggingTypeName = p.typeName;
+    draggingColor = p.color;
+    draggingExistingId = placementId;
+    startGhost(p.archetype, p.color, e.clientX, e.clientY);
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', onDragEnd);
+  }
+
+  function startGhost(text, color, x, y){
+    dragGhost = document.createElement('div');
+    dragGhost.className = 'drag-ghost';
+    dragGhost.style.background = color || 'var(--ink)';
+    dragGhost.textContent = text;
+    dragGhost.style.left = x + 'px';
+    dragGhost.style.top = y + 'px';
+    document.body.appendChild(dragGhost);
+  }
+
+  function onDragMove(e){
+    if(dragGhost){
+      dragGhost.style.left = e.clientX + 'px';
+      dragGhost.style.top = e.clientY + 'px';
+    }
+    if(!canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const over = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+    canvasEl.classList.toggle('drop-hover', over);
+  }
+
+  function onDragEnd(e){
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', onDragEnd);
+    if(canvasEl) canvasEl.classList.remove('drop-hover');
+    if(dragGhost){ dragGhost.remove(); dragGhost = null; }
+    if(!canvasEl){
+      draggingArchetype=null; draggingTypeName=null; draggingColor=null; draggingExistingId=null;
+      return;
+    }
+
+    const rect = canvasEl.getBoundingClientRect();
+    const over = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+    if(!over){
+      draggingArchetype=null; draggingTypeName=null; draggingColor=null; draggingExistingId=null;
+      return;
+    }
+
+    const px = ((e.clientX - rect.left) / rect.width) * 100;
+    const py = ((e.clientY - rect.top) / rect.height) * 100;
+    const x = clamp(px - 50, -50, 50);
+    const y = clamp(50 - py, -50, 50);
+
+    if(draggingExistingId){
+      const p = state.draftPlacements.find(x2=>x2.id===draggingExistingId);
+      if(p){ p.x = x; p.y = y; }
+    } else {
+      const existing = state.draftPlacements.find(p=>p.archetype===draggingArchetype);
+      if(existing){
+        existing.x = x; existing.y = y;
+      } else {
+        state.draftPlacements.push({
+          id: uid(),
+          archetype: draggingArchetype,
+          typeName: draggingTypeName,
+          color: draggingColor,
+          x, y,
+          reason: ''
+        });
+      }
+    }
+    draggingArchetype = null;
+    draggingTypeName = null;
+    draggingColor = null;
+    draggingExistingId = null;
+    renderMaterialView();
+  }
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  // ---- export ----
+  function exportCsv(){
+    const mat = state.materials.find(m=>m.id===state.activeMaterialId);
+    const rows = [['Material','Field of work','Archetype','Type', state.axisLabels.right+'/'+state.axisLabels.left, state.axisLabels.top+'/'+state.axisLabels.bottom, 'Reason','Submitted']];
+    state.activeResponses.forEach(r=>{
+      r.placements.forEach(p=>{
+        rows.push([mat?mat.name:'', r.fieldOfWork, p.archetype, p.typeName, fmt(p.x), fmt(p.y), p.reason||'', new Date(r.createdAt).toISOString()]);
+      });
+    });
+    const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (mat?mat.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase():'material') + '-responses.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- init ----------
+  loadLibrary();
+})();
+</script>
+</body>
+</html>
